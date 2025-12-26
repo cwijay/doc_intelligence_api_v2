@@ -1,0 +1,87 @@
+[project]
+name = "document-intelligence-backend"
+version = "1.0.0"
+description = "Document management backend with FastAPI and PostgreSQL"
+# readme = "README.md"  # Excluded from Docker builds via .dockerignore
+license = {text = "MIT"}
+requires-python = ">=3.12"
+authors = [
+    {name = "Document Intelligence Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    # Shared packages (editable local packages)
+    "biz2bricks-core",
+    # Core FastAPI dependencies
+    "fastapi==0.124.0",
+    "uvicorn[standard]==0.38.0",
+    "python-multipart==0.0.17",
+    # Database (PostgreSQL/Cloud SQL)
+    "sqlalchemy[asyncio]==2.0.44",
+    "asyncpg==0.31.0",
+    "cloud-sql-python-connector[asyncpg]==1.18.5",
+    "tenacity>=9.0.0",
+    # Google Cloud
+    "google-auth==2.38.0",
+    "google-cloud-storage==2.19.0",
+    # Validation and configuration - STRICT Pydantic v2 constraints
+    "pydantic>=2.12.5,<3.0.0",
+    "pydantic-settings>=2.7.1",
+    "python-dotenv==1.0.1",
+    # Authentication and security
+    "pyjwt==2.8.0",
+    "passlib[bcrypt]==1.7.4",
+    "bcrypt==4.0.1",
+    # Utilities and logging
+    "python-json-logger>=2.0.7",
+    "structlog>=24.1.0",
+    "dnspython==2.7.0",
+    "pyyaml>=6.0.1",
+    "email-validator>=2.3.0",
+    # Caching
+    "fastapi-cache2>=0.2.1",
+]
+
+[project.optional-dependencies]
+redis = [
+    "redis>=5.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.0.0",
+    "pytest-timeout>=2.2.0",
+    "httpx>=0.27.0",
+    "faker>=20.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.uv.sources]
+biz2bricks-core = { git = "https://github.com/cwijay/biz_to_bricks_core_v1.git", branch = "main" }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+timeout = 30
+
