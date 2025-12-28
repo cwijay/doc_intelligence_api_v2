@@ -101,8 +101,8 @@ class Settings(BaseSettings):
     CLOUD_SQL_IP_TYPE: str = "PRIVATE"  # PRIVATE or PUBLIC
 
     # Connection Pool Settings - increased for production workloads
-    DB_POOL_SIZE: int = 10  # Base connections per event loop
-    DB_MAX_OVERFLOW: int = 20  # Additional connections under load
+    DB_POOL_SIZE: int = 2  # Base connections per event loop
+    DB_MAX_OVERFLOW: int = 5  # Additional connections under load
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800  # 30 minutes
     DB_ECHO: bool = False  # SQL query logging
