@@ -16,7 +16,7 @@ from app.core.simple_auth import get_current_user_dict
 from app.core.config import settings
 from app.core.logging import configure_logging, setup_request_logging, get_logger
 from app.core.exceptions import setup_exception_handlers
-from biz2bricks_core import db
+from app.core.db_client import db
 from app.core.cache import init_cache, close_cache, get_cache_status
 
 # Configure logging first
@@ -713,6 +713,16 @@ async def health_check() -> Dict[str, Any]:
     Used by load balancers and orchestration tools.
     """
     try:
+        # If database is disabled, report healthy without DB check
+        if not settings.DATABASE_ENABLED:
+            return {
+                "status": "healthy",
+                "timestamp": time.time(),
+                "version": settings.VERSION,
+                "environment": settings.ENVIRONMENT,
+                "database": "disabled",
+            }
+
         # Check database connection (critical for service health)
         db_available = await db.test_connection(timeout=5.0)
 
@@ -771,8 +781,10 @@ async def detailed_status() -> Dict[str, Any]:
             "services": {
                 "postgresql": {
                     "status": "connected" if db_available else "unavailable",
+                    "enabled": settings.DATABASE_ENABLED,
                     "pool_size": settings.DB_POOL_SIZE,
                     "max_overflow": settings.DB_MAX_OVERFLOW,
+                    "pool_stats": db.get_pool_stats(),
                 },
                 "cache": get_cache_status(),
             },

@@ -71,6 +71,13 @@ class DatabaseManager:
             )
             return
 
+        # Skip if database is disabled
+        if not settings.DATABASE_ENABLED:
+            logger.debug(
+                f"Skipping engine setup for loop {loop_id} - database disabled"
+            )
+            return
+
         if loop_id in self._engines:
             return
 
@@ -233,6 +240,8 @@ class DatabaseManager:
 
     async def get_engine_async(self) -> Optional[AsyncEngine]:
         """Get the async engine, initializing for the current event loop if necessary."""
+        if not settings.DATABASE_ENABLED:
+            return None
         loop_id = self._get_loop_id()
         if loop_id not in self._engines:
             await self._async_setup_engine_for_loop(loop_id)
@@ -241,6 +250,10 @@ class DatabaseManager:
     async def test_connection(self, timeout: float = 15.0) -> bool:
         """Test database connectivity with timeout."""
         from sqlalchemy import text
+
+        if not settings.DATABASE_ENABLED:
+            logger.info("Database disabled - skipping connection test")
+            return True  # Skip if disabled
 
         engine = await self.get_engine_async()
         if not engine:
@@ -261,20 +274,29 @@ class DatabaseManager:
             return False
 
     @asynccontextmanager
-    async def session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def session(self) -> AsyncGenerator[Optional[AsyncSession], None]:
         """
         Get an async session with automatic commit/rollback.
 
+        Returns None if database is disabled.
+
         Usage:
             async with db.session() as session:
-                result = await session.execute(...)
+                if session:
+                    result = await session.execute(...)
         """
+        # Return None if database is disabled
+        if not settings.DATABASE_ENABLED:
+            yield None
+            return
+
         loop_id = self._get_loop_id()
         if loop_id not in self._session_factories:
             await self._async_setup_engine_for_loop(loop_id)
 
         if loop_id not in self._session_factories:
-            raise RuntimeError("Failed to initialize database session factory")
+            yield None
+            return
 
         session = self._session_factories[loop_id]()
         try:
@@ -335,10 +357,82 @@ class DatabaseManager:
 
         logger.info("Database connections closed for current loop")
 
+    def close_sync(self, loop_id: Optional[int] = None):
+        """
+        Close resources for a specific event loop (sync version).
+
+        Used by background threads to clean up their own resources
+        before their event loop closes.
+
+        Args:
+            loop_id: The loop ID to close. If None, uses current loop.
+        """
+        if loop_id is None:
+            loop_id = self._get_loop_id()
+
+        # Close connector synchronously
+        if loop_id in self._connectors and self._connectors[loop_id]:
+            try:
+                self._connectors[loop_id].close()
+            except Exception as e:
+                logger.debug(f"Error closing connector: {e}")
+            del self._connectors[loop_id]
+
+        # Dispose engine pool properly
+        if loop_id in self._engines:
+            engine = self._engines[loop_id]
+            del self._engines[loop_id]
+
+            # Try to dispose the underlying pool synchronously
+            try:
+                pool = engine.pool
+                if pool:
+                    pool.dispose()
+                    logger.debug(
+                        f"Disposed connection pool synchronously for loop {loop_id}"
+                    )
+            except Exception as e:
+                logger.debug(f"Could not dispose pool synchronously: {e}")
+
+        if loop_id in self._session_factories:
+            del self._session_factories[loop_id]
+
+        logger.debug(f"Closed database resources for loop {loop_id}")
+
+    def get_pool_stats(self) -> Dict[str, Any]:
+        """
+        Get connection pool statistics for monitoring.
+
+        Returns:
+            Dictionary with pool stats per event loop.
+        """
+        stats = {
+            "pools_count": len(self._engines),
+            "shutdown_mode": self._shutdown,
+            "database_enabled": settings.DATABASE_ENABLED,
+            "pools": {},
+        }
+
+        for loop_id, engine in self._engines.items():
+            try:
+                pool = engine.pool
+                if pool:
+                    stats["pools"][str(loop_id)] = {
+                        "size": pool.size(),
+                        "checked_out": pool.checkedout(),
+                        "overflow": pool.overflow(),
+                        "checked_in": pool.checkedin(),
+                    }
+            except Exception as e:
+                stats["pools"][str(loop_id)] = {"error": str(e)}
+
+        return stats
+
     async def close_all(self):
         """Close ALL engines and connectors across ALL event loops."""
         self._shutdown = True
 
+        # Synchronously close ALL connectors to stop background refresh tasks
         for loop_id, connector in list(self._connectors.items()):
             if connector:
                 try:
@@ -347,6 +441,7 @@ class DatabaseManager:
                     logger.debug(f"Error closing connector for loop {loop_id}: {e}")
         self._connectors.clear()
 
+        # Dispose current loop's engine (we can only await in current loop)
         current_loop_id = self._get_loop_id()
         if current_loop_id in self._engines:
             try:
@@ -354,8 +449,10 @@ class DatabaseManager:
             except Exception as e:
                 logger.debug(f"Error disposing engine: {e}")
 
+        # Clear all resources
         self._engines.clear()
         self._session_factories.clear()
+        self._initialized = False
 
         logger.info("All database connections closed")
 

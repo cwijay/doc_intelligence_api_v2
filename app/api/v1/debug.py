@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, func
 
 from app.core.config import settings
-from biz2bricks_core import db, OrganizationModel, UserModel
+from app.core.db_client import db
+from biz2bricks_core import OrganizationModel, UserModel
 from app.core.logging import get_service_logger
 from app.services.user_service import user_service
 from app.services.org_service import organization_service

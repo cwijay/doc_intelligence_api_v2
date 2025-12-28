@@ -90,6 +90,7 @@ class Settings(BaseSettings):
     )
 
     # PostgreSQL/Cloud SQL Configuration
+    DATABASE_ENABLED: bool = True  # Set false to skip all DB operations
     DATABASE_URL: Optional[str] = None  # Full connection URL (for local dev)
     DATABASE_NAME: str = "doc_intelligence"
     DATABASE_USER: str = "postgres"

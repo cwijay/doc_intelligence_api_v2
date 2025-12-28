@@ -16,8 +16,8 @@ from app.models.schemas import (
     PaginationParams,
     FolderFilters,
 )
+from app.core.db_client import db
 from biz2bricks_core import (
-    db,
     FolderModel,
     OrganizationModel,
     AuditAction,

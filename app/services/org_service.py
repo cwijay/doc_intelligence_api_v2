@@ -16,7 +16,8 @@ from app.models.schemas import (
     PaginationParams,
     OrganizationFilters,
 )
-from biz2bricks_core import db, OrganizationModel, AuditAction, AuditEntityType
+from app.core.db_client import db
+from biz2bricks_core import OrganizationModel, AuditAction, AuditEntityType
 from app.core.logging import get_service_logger
 from app.core.cache import cached_organizations, invalidate_organization
 from app.services.audit_service import audit_service

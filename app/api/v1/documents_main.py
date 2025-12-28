@@ -64,7 +64,7 @@ async def documents_health_check():
     """
     try:
         from app.core.gcs_client import gcs_client
-        from biz2bricks_core import db
+        from app.core.db_client import db
 
         # Check database connection
         db_healthy = await db.test_connection(timeout=5.0)

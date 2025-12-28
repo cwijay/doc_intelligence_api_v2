@@ -10,7 +10,7 @@ This service provides the foundation for all document services with:
 """
 
 from typing import Optional
-from biz2bricks_core import db
+from app.core.db_client import db
 from app.core.logging import get_service_logger
 from app.models.document import FileType
 

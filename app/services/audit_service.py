@@ -16,7 +16,8 @@ from uuid import uuid4
 from sqlalchemy import select, and_, func
 from sqlalchemy.exc import SQLAlchemyError
 
-from biz2bricks_core import db, AuditLogModel, AuditAction, AuditEntityType
+from app.core.db_client import db
+from biz2bricks_core import AuditLogModel, AuditAction, AuditEntityType
 from app.core.logging import get_service_logger
 from app.models.schemas import PaginationParams
 
