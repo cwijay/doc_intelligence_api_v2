@@ -34,12 +34,18 @@ A **document management platform** built with FastAPI and PostgreSQL, featuring 
 
 The system follows a **clean architecture** with service composition patterns:
 
-- **Core Layer**: Configuration, clients (Database, GCS), security, logging, exceptions
+- **Core Layer**: Configuration, clients (Database, GCS), security package, logging, middleware
 - **Service Layer**: Business logic with Facade pattern for document operations
-- **API Layer**: FastAPI routers with dependency injection and session-based auth
+- **API Layer**: FastAPI routers with modular packages (auth/, documents_modules/)
 - **Models Layer**: Pydantic v2 models (local) and SQLAlchemy ORM models (from `biz2bricks_core`)
   - **Plan Types**: FREE, STARTER, PRO, BUSINESS (with usage limits)
   - **Document Fields**: file_hash, parsed_path, parsed_at (for AI processing)
+
+**Key Architectural Decisions:**
+- `app/main.py` streamlined to ~300 lines (health, OpenAPI, middleware extracted)
+- `app/core/security/` package for JWT, password, and auth dependencies
+- `app/api/v1/auth/` package for modular authentication endpoints
+- Configuration values extracted to `app/core/config.py` (no hard-coded values)
 
 ### Document Service Architecture
 
@@ -408,6 +414,16 @@ CORS_CREDENTIALS=true
 MAX_FILE_SIZE=52428800  # 50MB
 ALLOWED_FILE_TYPES='["pdf", "xlsx"]'
 SIGNED_URL_EXPIRATION_MINUTES=60
+SIGNED_URL_MIN_EXPIRATION=1      # minutes
+SIGNED_URL_MAX_EXPIRATION=1440   # minutes (24 hours)
+
+# Password Policy
+PASSWORD_MIN_LENGTH=8
+PASSWORD_MAX_LENGTH=128
+
+# Storage Settings
+MAX_FOLDER_DEPTH=5
+GCS_FOLDER_TYPES='["original", "parsed", "bm-25"]'
 
 # GCP Authentication (choose one):
 # Option 1: Service Account Key File
@@ -429,6 +445,7 @@ CACHE_BACKEND=memory
 
 # Default TTL in seconds (default: 300)
 CACHE_DEFAULT_TTL=300
+CACHE_KEY_PREFIX=docint  # Cache key prefix for namespacing
 
 # Redis configuration (optional - for production)
 REDIS_HOST=localhost
@@ -806,11 +823,17 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 ```
 doc_intelligence_backend_api_v2.0/
 ├── app/                                    # Main application package
-│   ├── main.py                            # FastAPI application entry point
+│   ├── main.py                            # FastAPI entry point (~300 lines, streamlined)
 │   │
 │   ├── api/                               # API routes
+│   │   ├── health.py                     # Health check endpoints (/health, /status, /ready, /live)
 │   │   └── v1/
-│   │       ├── auth.py                   # Authentication endpoints
+│   │       ├── auth/                     # Authentication package (modular)
+│   │       │   ├── __init__.py          # Router aggregation
+│   │       │   ├── login.py             # /login, /logout, /register endpoints
+│   │       │   ├── tokens.py            # /refresh, /validate, /refresh-session
+│   │       │   ├── organizations.py     # /organizations lookup endpoints
+│   │       │   └── invitations.py       # /invite endpoint
 │   │       ├── organizations.py          # Organization management
 │   │       ├── users.py                  # User management
 │   │       ├── folders.py                # Folder management
@@ -824,13 +847,20 @@ doc_intelligence_backend_api_v2.0/
 │   │           └── document_download.py
 │   │
 │   ├── core/                              # Core functionality
-│   │   ├── config.py                     # Pydantic settings
+│   │   ├── config.py                     # Pydantic settings (with all config values)
 │   │   ├── cache.py                      # Caching infrastructure (memory/Redis)
 │   │   ├── db_client.py                  # PostgreSQL DatabaseManager
 │   │   ├── gcs_client.py                 # GCS client singleton
-│   │   ├── security.py                   # JWT and password handling
+│   │   ├── simple_auth.py                # Session-based authentication manager
+│   │   ├── middleware.py                 # CORS, security headers setup
+│   │   ├── openapi.py                    # OpenAPI schema customization
 │   │   ├── logging.py                    # Structured logging
-│   │   └── exceptions.py                 # Custom exceptions
+│   │   ├── exceptions.py                 # Custom exceptions
+│   │   └── security/                     # Security package (modular)
+│   │       ├── __init__.py              # Re-exports for backwards compatibility
+│   │       ├── password.py              # Password hashing & validation
+│   │       ├── tokens.py                # JWT token management, EnterpriseTokenManager
+│   │       └── dependencies.py          # FastAPI security dependencies
 │   │
 │   ├── models/                            # Data models
 │   │   ├── user.py                       # User Pydantic models
@@ -839,6 +869,7 @@ doc_intelligence_backend_api_v2.0/
 │   │   ├── folder.py                     # Folder models
 │   │   └── schemas/                      # Request/response schemas
 │   │       ├── __init__.py              # Re-exports all schemas
+│   │       ├── auth.py                  # Auth request/response schemas
 │   │       ├── base.py                  # Pagination models
 │   │       ├── organization.py          # Organization schemas
 │   │       ├── user.py                  # User schemas

@@ -1,26 +1,37 @@
-"""Security module - backwards compatibility shim.
+"""Security module for authentication and authorization.
 
-This file re-exports from the new security package for backwards compatibility.
-Import from app.core.security (package) for new code.
+This module provides:
+- Password hashing and validation (bcrypt)
+- JWT token management with enterprise tracking
+- Token blacklisting and session management
+- FastAPI security dependencies
 
-Deprecated: Import directly from app.core.security package instead.
+Usage:
+    from app.core.security import (
+        hash_password,
+        verify_password,
+        create_access_token,
+        verify_token,
+        get_current_user_org,
+    )
 """
 
-# Re-export everything from the security package
-from app.core.security import (
-    # Password
+# Password functions
+from .password import (
     hash_password,
     verify_password,
     validate_password_strength,
     generate_secure_password,
     needs_rehash,
     pwd_context,
-    # Token types
+)
+
+# Token management
+from .tokens import (
     TokenInfo,
     UserSessionManager,
     TokenValidationResult,
     EnterpriseTokenManager,
-    # Token functions
     create_access_token,
     create_refresh_token,
     verify_token,
@@ -34,13 +45,16 @@ from app.core.security import (
     invalidate_user_sessions,
     get_user_active_session_count,
     cleanup_expired_tokens,
-    # Dependencies
-    security,
-    get_current_user_org,
-    # Legacy
+    # Legacy compatibility
     _enterprise_token_manager,
     _blacklisted_tokens,
     _blacklist_lock,
+)
+
+# FastAPI dependencies
+from .dependencies import (
+    security,
+    get_current_user_org,
 )
 
 __all__ = [

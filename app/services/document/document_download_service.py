@@ -10,7 +10,7 @@ This service handles secure document access and download operations:
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from app.models.schemas import DocumentDownloadResponse
 from app.core.gcs_client import gcs_client, GCSClientError
@@ -399,77 +399,3 @@ class DocumentDownloadService(DocumentBaseService):
 
         return content_type_mapping.get(file_type, "application/octet-stream")
 
-    async def get_download_statistics(
-        self,
-        org_id: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-    ) -> Dict[str, Any]:
-        """
-        Get download statistics for an organization.
-
-        Note: This is a placeholder for download analytics.
-        In a full implementation, this would query download logs/metrics.
-
-        Args:
-            org_id: Organization ID
-            start_date: Start date for statistics (optional)
-            end_date: End date for statistics (optional)
-
-        Returns:
-            Dictionary with download statistics
-        """
-        try:
-            # Placeholder implementation
-            # In a real system, this would query download logs or metrics storage
-
-            if start_date is None:
-                start_date = datetime.now(timezone.utc) - timedelta(days=30)
-
-            if end_date is None:
-                end_date = datetime.now(timezone.utc)
-
-            # This would be replaced with actual metrics queries
-            placeholder_stats = {
-                "org_id": org_id,
-                "period": {
-                    "start_date": start_date,
-                    "end_date": end_date,
-                    "days": (end_date - start_date).days,
-                },
-                "download_metrics": {
-                    "total_downloads": 0,
-                    "unique_documents": 0,
-                    "unique_users": 0,
-                    "total_bytes_downloaded": 0,
-                    "average_file_size": 0,
-                },
-                "top_downloaded_documents": [],
-                "download_patterns": {
-                    "peak_hour": "Not available",
-                    "peak_day": "Not available",
-                    "most_common_file_type": "Not available",
-                },
-                "note": "Download statistics require implementation of download logging system",
-                "generated_at": datetime.now(timezone.utc),
-            }
-
-            self.logger.info(
-                "Download statistics requested",
-                org_id=org_id,
-                start_date=start_date.isoformat(),
-                end_date=end_date.isoformat(),
-                note="placeholder_implementation",
-            )
-
-            return placeholder_stats
-
-        except Exception as e:
-            self.logger.error(
-                "Error getting download statistics", org_id=org_id, error=str(e)
-            )
-            return {
-                "org_id": org_id,
-                "error": str(e),
-                "generated_at": datetime.now(timezone.utc),
-            }

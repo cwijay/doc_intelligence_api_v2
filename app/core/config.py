@@ -120,6 +120,22 @@ class Settings(BaseSettings):
 
     DOCUMENT_UPLOAD_TIMEOUT: int = 300  # 5 minutes in seconds
     SIGNED_URL_EXPIRATION_MINUTES: int = 60  # Default signed URL expiration
+    SIGNED_URL_MIN_EXPIRATION: int = 1  # Minimum signed URL expiration in minutes
+    SIGNED_URL_MAX_EXPIRATION: int = 1440  # Maximum signed URL expiration in minutes (24 hours)
+
+    # Password Policy
+    PASSWORD_MIN_LENGTH: int = 8
+    PASSWORD_MAX_LENGTH: int = 128
+
+    # Folder Configuration
+    MAX_FOLDER_DEPTH: int = 5
+    GCS_FOLDER_TYPES: List[str] = ["original", "parsed", "bm-25"]
+
+    # Database Health Check
+    DB_HEALTH_CHECK_TIMEOUT: float = 5.0  # Timeout in seconds for DB health checks
+
+    # Production Host Patterns (for TrustedHostMiddleware)
+    ALLOWED_HOST_PATTERNS: List[str] = ["*.run.app", "*.biztobricks.com"]
 
     @field_validator("ALLOWED_FILE_TYPES", mode="before")
     @classmethod
@@ -181,6 +197,7 @@ class Settings(BaseSettings):
     CACHE_ENABLED: bool = True
     CACHE_BACKEND: str = "memory"  # "memory" (default) or "redis"
     CACHE_DEFAULT_TTL: int = 300  # 5 minutes default
+    CACHE_KEY_PREFIX: str = "docint"  # Cache key prefix for namespacing
 
     # Redis Configuration (only used when CACHE_BACKEND=redis)
     REDIS_HOST: Optional[str] = None  # GCP Memorystore IP

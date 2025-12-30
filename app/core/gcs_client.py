@@ -163,7 +163,7 @@ class GCSClient:
         """
         self._ensure_initialized()
         try:
-            folder_types = ["original", "parsed", "bm-25"]
+            folder_types = settings.GCS_FOLDER_TYPES
             results = {}
 
             for folder_type in folder_types:
@@ -226,7 +226,7 @@ class GCSClient:
         """
         self._ensure_initialized()
         try:
-            folder_types = ["original", "parsed", "bm-25"]
+            folder_types = settings.GCS_FOLDER_TYPES
             results = {}
 
             for folder_type in folder_types:
@@ -275,7 +275,7 @@ class GCSClient:
         """
         self._ensure_initialized()
         try:
-            folder_types = ["original", "parsed", "bm-25"]
+            folder_types = settings.GCS_FOLDER_TYPES
             results = {}
 
             for folder_type in folder_types:
@@ -485,6 +485,9 @@ class GCSClient:
         """
         Generate a signed URL for document download.
 
+        Supports both service account credentials (with private key) and
+        OAuth/ADC credentials (using IAM signBlob API).
+
         Args:
             storage_path: GCS storage path
             expiration_minutes: URL expiration time in minutes
@@ -495,6 +498,9 @@ class GCSClient:
         self._ensure_initialized()
         try:
             from datetime import timedelta
+            import google.auth
+            from google.auth.transport import requests as auth_requests
+            from google.oauth2 import service_account
 
             blob = self.bucket.blob(storage_path)
 
@@ -506,10 +512,75 @@ class GCSClient:
                 minutes=expiration_minutes
             )
 
-            # Generate signed URL
-            signed_url = blob.generate_signed_url(
-                expiration=expiration, method="GET", version="v4"
-            )
+            # Get current credentials to check type
+            credentials, project = google.auth.default()
+
+            # Check if credentials are service account with signing capability
+            if isinstance(credentials, service_account.Credentials):
+                # Service account credentials can sign directly
+                signed_url = blob.generate_signed_url(
+                    expiration=expiration, method="GET", version="v4"
+                )
+            else:
+                # OAuth/ADC credentials - use IAM signBlob API
+                # This requires the credentials to have iam.serviceAccounts.signBlob permission
+                self.logger.debug(
+                    "Using IAM signBlob API for signed URL generation",
+                    credential_type=type(credentials).__name__,
+                )
+
+                # Refresh credentials to get access token
+                auth_request = auth_requests.Request()
+                credentials.refresh(auth_request)
+
+                # Get service account email from client
+                # For ADC, we need to get the service account that GCS uses
+                service_account_email = self._client._credentials.service_account_email if hasattr(
+                    self._client._credentials, 'service_account_email'
+                ) else None
+
+                if not service_account_email:
+                    # Try to get from the compute metadata service
+                    try:
+                        import requests
+                        metadata_url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email"
+                        response = requests.get(
+                            metadata_url,
+                            headers={"Metadata-Flavor": "Google"},
+                            timeout=2
+                        )
+                        if response.status_code == 200:
+                            service_account_email = response.text
+                    except Exception:
+                        pass
+
+                if service_account_email:
+                    # Use IAM signBlob API via service_account_email and access_token
+                    signed_url = blob.generate_signed_url(
+                        expiration=expiration,
+                        method="GET",
+                        version="v4",
+                        service_account_email=service_account_email,
+                        access_token=credentials.token,
+                    )
+                else:
+                    # Last resort: try direct signing (may fail for OAuth credentials)
+                    try:
+                        signed_url = blob.generate_signed_url(
+                            expiration=expiration, method="GET", version="v4"
+                        )
+                    except Exception as sign_error:
+                        self.logger.warning(
+                            "Signed URL generation failed, credentials may not support signing",
+                            error=str(sign_error),
+                            credential_type=type(credentials).__name__,
+                        )
+                        raise GCSClientError(
+                            f"Cannot generate signed URL: credentials type "
+                            f"'{type(credentials).__name__}' does not support URL signing. "
+                            f"Use a service account key file (set GOOGLE_APPLICATION_CREDENTIALS) "
+                            f"or run on GCP with appropriate IAM permissions."
+                        )
 
             self.logger.info(
                 "Generated signed URL for document",
@@ -519,9 +590,21 @@ class GCSClient:
 
             return signed_url, expiration
 
+        except GCSObjectNotFoundError:
+            raise
+        except GCSClientError:
+            raise
         except GoogleAPIError as e:
             self.logger.error(
                 "Failed to generate signed URL", storage_path=storage_path, error=str(e)
+            )
+            raise GCSClientError(f"Failed to generate signed URL: {e}")
+        except Exception as e:
+            self.logger.error(
+                "Unexpected error generating signed URL",
+                storage_path=storage_path,
+                error=str(e),
+                error_type=type(e).__name__,
             )
             raise GCSClientError(f"Failed to generate signed URL: {e}")
 

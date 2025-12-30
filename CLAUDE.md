@@ -55,23 +55,39 @@ uv run python scripts/generate_client.py --dry-run          # Preview without ge
 
 ```
 app/
-├── main.py                 # FastAPI entry point
-├── api/v1/                 # API endpoints (routers)
-│   ├── auth.py            # Session-based JWT auth
-│   ├── organizations.py   # Multi-tenant org management
-│   ├── users.py           # User CRUD
-│   ├── folders.py         # Folder hierarchy
-│   ├── audit.py           # Audit log endpoints
-│   └── documents_modules/ # Document endpoints (modular)
+├── main.py                 # FastAPI entry point (~300 lines, streamlined)
+├── api/
+│   ├── health.py          # Health check endpoints (/health, /status, /ready, /live)
+│   └── v1/                # API endpoints (routers)
+│       ├── auth/          # Authentication package (modular)
+│       │   ├── __init__.py    # Router aggregation
+│       │   ├── login.py       # /login, /logout, /register
+│       │   ├── tokens.py      # /refresh, /validate
+│       │   ├── organizations.py  # /organizations
+│       │   └── invitations.py    # /invite
+│       ├── organizations.py   # Multi-tenant org management
+│       ├── users.py           # User CRUD
+│       ├── folders.py         # Folder hierarchy
+│       ├── audit.py           # Audit log endpoints
+│       └── documents_modules/ # Document endpoints (modular)
 ├── services/               # Business logic layer
 │   ├── audit_service.py   # Non-blocking audit logging
 │   └── document/          # Facade pattern (5 specialized services)
 ├── core/                   # Infrastructure
+│   ├── config.py          # Pydantic settings
 │   ├── db_client.py       # DatabaseManager singleton
 │   ├── gcs_client.py      # GCS singleton
-│   └── security.py        # JWT, password hashing
+│   ├── middleware.py      # CORS, security headers setup
+│   ├── openapi.py         # OpenAPI schema customization
+│   ├── simple_auth.py     # Session-based authentication
+│   └── security/          # Security package (modular)
+│       ├── __init__.py    # Re-exports for backwards compatibility
+│       ├── password.py    # Password hashing & validation
+│       ├── tokens.py      # JWT token management
+│       └── dependencies.py # FastAPI security dependencies
 └── models/                 # Pydantic models & schemas
     └── schemas/           # Request/response schemas (modular)
+        └── auth.py        # Auth request/response models
 ```
 
 ### Model Architecture (Shared vs Local)
@@ -276,13 +292,27 @@ GCP_PROJECT_ID="your-project-id"
 GCS_BUCKET_NAME="your-bucket-name"
 JWT_SECRET_KEY="your-256-bit-secret"
 
+# Password Policy (configurable)
+PASSWORD_MIN_LENGTH=8
+PASSWORD_MAX_LENGTH=128
+
+# Storage Settings
+MAX_FOLDER_DEPTH=5
+GCS_FOLDER_TYPES='["original", "parsed", "bm-25"]'
+SIGNED_URL_MIN_EXPIRATION=1      # minutes
+SIGNED_URL_MAX_EXPIRATION=1440   # minutes (24 hours)
+
 # Cache Configuration
 CACHE_ENABLED=true
 CACHE_BACKEND="memory"  # or "redis"
 CACHE_DEFAULT_TTL=300
+CACHE_KEY_PREFIX="docint"
 # Redis (optional - for production)
 REDIS_HOST="localhost"
 REDIS_PORT=6379
+
+# Production Host Patterns
+ALLOWED_HOST_PATTERNS='["*.run.app", "*.biztobricks.com"]'
 ```
 
 ## Coding Standards
@@ -330,11 +360,15 @@ tests/
 
 | Category | Files |
 |----------|-------|
-| Entry Point | `app/main.py` |
+| Entry Point | `app/main.py` (~300 lines, streamlined) |
+| Health | `app/api/health.py` (health check endpoints) |
+| Auth API | `app/api/v1/auth/` package (login, tokens, organizations, invitations) |
+| Security | `app/core/security/` package (password, tokens, dependencies) |
+| Session Auth | `app/core/simple_auth.py` (session-based authentication) |
+| Middleware | `app/core/middleware.py`, `app/core/openapi.py` |
 | Database | `biz2bricks_core` (shared models: OrganizationModel, UserModel, FolderModel, DocumentModel, AuditLogModel) |
 | Cache | `app/core/cache.py` |
 | Services | `app/services/document/document_service.py` (facade), `app/services/audit_service.py` |
-| Auth | `app/api/v1/auth.py`, `app/core/security.py` |
 | Scripts | `scripts/generate_client.py` (TypeScript types from OpenAPI) |
 | Infra CLI | `biz2bricks provision`, `biz2bricks db init`, `biz2bricks status` (from biz2bricks_infra package) |
 | Deploy | `deploy.sh`, `cloudbuild.yaml` |

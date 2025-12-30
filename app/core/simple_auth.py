@@ -5,6 +5,7 @@ This provides basic session-based authentication for the MVP version.
 Designed to be easily replaceable with enterprise JWT authentication later.
 """
 
+import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Any
@@ -155,7 +156,10 @@ class SimpleAuthManager:
                 refresh_expires_at=refresh_expires_at.isoformat(),
             )
 
-            return session
+        # Persist to database (non-blocking)
+        asyncio.create_task(self.save_session_to_db(session))
+
+        return session
 
     def get_session(self, session_id: str) -> Optional[SimpleSession]:
         """
@@ -224,6 +228,9 @@ class SimpleAuthManager:
                     email=session.email,
                 )
 
+                # Delete from database (non-blocking)
+                asyncio.create_task(self.delete_session_from_db(session_id))
+
                 return True
             return False
 
@@ -256,7 +263,11 @@ class SimpleAuthManager:
                     count=len(sessions_to_remove),
                 )
 
-            return len(sessions_to_remove)
+        # Delete from database (non-blocking)
+        for session_id in sessions_to_remove:
+            asyncio.create_task(self.delete_session_from_db(session_id))
+
+        return len(sessions_to_remove)
 
     def cleanup_expired_sessions(self) -> int:
         """
@@ -373,7 +384,11 @@ class SimpleAuthManager:
                 expires_at=new_expires_at.isoformat(),
             )
 
-            return new_session
+        # Persist changes to database (non-blocking)
+        asyncio.create_task(self.delete_session_from_db(session_id))
+        asyncio.create_task(self.save_session_to_db(new_session))
+
+        return new_session
 
     def validate_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -397,6 +412,155 @@ class SimpleAuthManager:
             "can_refresh": session.refresh_token is not None
             and not session.is_refresh_expired(),
         }
+
+    # ==================== Database Persistence Methods ====================
+
+    async def save_session_to_db(self, session: SimpleSession) -> None:
+        """
+        Persist session to database (non-blocking).
+
+        Uses upsert to handle both new sessions and updates.
+        Called asynchronously to avoid blocking the main request flow.
+        """
+        try:
+            from biz2bricks_core import SessionModel, db
+            from sqlalchemy.dialects.postgresql import insert
+
+            async with db.session() as db_session:
+                stmt = insert(SessionModel).values(
+                    session_id=session.session_id,
+                    user_id=session.user_id,
+                    organization_id=session.org_id,  # Map org_id to organization_id
+                    email=session.email,
+                    full_name=session.full_name,
+                    username=session.username,
+                    role=session.role,
+                    created_at=session.created_at,
+                    last_used=session.last_used,
+                    expires_at=session.expires_at,
+                    refresh_token=session.refresh_token,
+                    refresh_expires_at=session.refresh_expires_at,
+                ).on_conflict_do_update(
+                    index_elements=["session_id"],
+                    set_={
+                        "last_used": session.last_used,
+                        "expires_at": session.expires_at,
+                    },
+                )
+                await db_session.execute(stmt)
+
+            logger.debug(
+                "Session persisted to database",
+                session_id=session.session_id[:8] + "...",
+                user_id=session.user_id,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to persist session to database",
+                session_id=session.session_id[:8] + "...",
+                error=str(e),
+            )
+
+    async def load_sessions_from_db(self) -> int:
+        """
+        Load non-expired sessions from database on startup.
+
+        Returns:
+            Number of sessions loaded
+        """
+        try:
+            from biz2bricks_core import SessionModel, db
+            from sqlalchemy import select
+
+            async with db.session() as db_session:
+                stmt = select(SessionModel).where(
+                    SessionModel.expires_at > datetime.now(timezone.utc)
+                )
+                result = await db_session.execute(stmt)
+
+                count = 0
+                with self._lock:
+                    for row in result.scalars():
+                        session = SimpleSession(
+                            session_id=row.session_id,
+                            user_id=row.user_id,
+                            org_id=row.organization_id,  # Map organization_id to org_id
+                            email=row.email,
+                            full_name=row.full_name,
+                            username=row.username,
+                            role=row.role,
+                            created_at=row.created_at,
+                            last_used=row.last_used,
+                            expires_at=row.expires_at,
+                            refresh_token=row.refresh_token,
+                            refresh_expires_at=row.refresh_expires_at,
+                        )
+                        self._sessions[row.session_id] = session
+                        if row.refresh_token:
+                            self._refresh_tokens[row.refresh_token] = row.session_id
+                        count += 1
+
+                logger.info("Sessions loaded from database", count=count)
+                return count
+
+        except Exception as e:
+            logger.error("Failed to load sessions from database", error=str(e))
+            return 0
+
+    async def delete_session_from_db(self, session_id: str) -> None:
+        """
+        Remove session from database.
+
+        Called asynchronously when a session is invalidated.
+        """
+        try:
+            from biz2bricks_core import SessionModel, db
+            from sqlalchemy import delete
+
+            async with db.session() as db_session:
+                stmt = delete(SessionModel).where(
+                    SessionModel.session_id == session_id
+                )
+                await db_session.execute(stmt)
+
+            logger.debug(
+                "Session deleted from database",
+                session_id=session_id[:8] + "...",
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to delete session from database",
+                session_id=session_id[:8] + "...",
+                error=str(e),
+            )
+
+    async def cleanup_expired_sessions_from_db(self) -> int:
+        """
+        Remove expired sessions from database.
+
+        Returns:
+            Number of sessions cleaned up
+        """
+        try:
+            from biz2bricks_core import SessionModel, db
+            from sqlalchemy import delete
+
+            async with db.session() as db_session:
+                stmt = delete(SessionModel).where(
+                    SessionModel.expires_at <= datetime.now(timezone.utc)
+                )
+                result = await db_session.execute(stmt)
+                count = result.rowcount
+
+            if count > 0:
+                logger.info("Expired sessions cleaned from database", count=count)
+            return count
+
+        except Exception as e:
+            logger.error(
+                "Failed to cleanup expired sessions from database", error=str(e)
+            )
+            return 0
 
 
 # Global simple auth manager instance
@@ -589,27 +753,4 @@ def get_current_user_dict(
         "created_at": session.created_at.isoformat(),
         "last_used": session.last_used.isoformat(),
         "expires_at": session.expires_at.isoformat(),
-    }
-
-
-def get_mock_user_dict() -> Dict[str, Any]:
-    """
-    TEMPORARY: Mock user for testing without authentication.
-
-    ⚠️  WARNING: FOR TESTING ONLY - REMOVE BEFORE PRODUCTION!
-
-    Returns fake user data to bypass authentication during development/testing.
-    Uses existing organization ID from the system for compatibility.
-    """
-    return {
-        "user_id": "test-user-123",
-        "org_id": "GUbmPT49OSDO3eFDU2r5",  # Existing org from logs
-        "email": "test@example.com",
-        "full_name": "Test User",
-        "username": "testuser",
-        "role": "admin",
-        "session_id": "mock-session",
-        "created_at": "2025-09-17T19:00:00",
-        "last_used": "2025-09-17T19:00:00",
-        "expires_at": "2025-09-18T19:00:00",
     }

@@ -106,6 +106,19 @@ from app.models.schemas.stats import (
     TokenValidationResponse,
 )
 
+# Auth schemas
+from app.models.schemas.auth import (
+    LoginRequest,
+    RegisterRequest,
+    InviteRegisterRequest,
+    RefreshTokenRequest,
+    AuthResponse,
+    AccessTokenResponse,
+    InvitationTokenResponse,
+    LogoutResponse,
+    LogoutAllResponse,
+)
+
 # Export all schemas
 __all__ = [
     # Enums (re-exported for convenience)
@@ -181,4 +194,14 @@ __all__ = [
     "AuditLogEntry",
     "AuditLogListResponse",
     "TokenValidationResponse",
+    # Auth schemas
+    "LoginRequest",
+    "RegisterRequest",
+    "InviteRegisterRequest",
+    "RefreshTokenRequest",
+    "AuthResponse",
+    "AccessTokenResponse",
+    "InvitationTokenResponse",
+    "LogoutResponse",
+    "LogoutAllResponse",
 ]
