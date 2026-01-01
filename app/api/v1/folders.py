@@ -161,8 +161,6 @@ async def get_folder(
     - **org_id**: Organization ID
     """
     try:
-        logger.debug("Retrieving folder", org_id=org_id, folder_id=folder_id)
-
         result = await folder_service.get_folder(org_id, folder_id)
 
         return result
@@ -250,22 +248,7 @@ async def list_folders(
             is_active=is_active,
         )
 
-        logger.debug(
-            "Listing folders",
-            org_id=org_id,
-            page=page,
-            per_page=per_page,
-            filters=filters.model_dump(exclude_none=True),
-        )
-
         result = await folder_service.list_folders(org_id, pagination, filters)
-
-        logger.debug(
-            "Folders listed successfully",
-            org_id=org_id,
-            count=len(result.folders),
-            total=result.total,
-        )
 
         return result
 
@@ -303,15 +286,7 @@ async def get_folder_tree(
     - **org_id**: Organization ID
     """
     try:
-        logger.debug("Retrieving folder tree", org_id=org_id)
-
         result = await folder_service.get_folder_tree(org_id)
-
-        logger.debug(
-            "Folder tree retrieved successfully",
-            org_id=org_id,
-            total_folders=result.total_folders,
-        )
 
         return result
 
@@ -566,8 +541,6 @@ async def get_folder_path(
     - **org_id**: Organization ID
     """
     try:
-        logger.debug("Retrieving folder path", org_id=org_id, folder_id=folder_id)
-
         path = await folder_service.get_folder_path(org_id, folder_id)
 
         return {"path": path}
@@ -621,7 +594,6 @@ async def get_folder_stats(
     - **org_id**: Organization ID
     """
     try:
-        logger.debug("Retrieving folder statistics", org_id=org_id)
 
         # Get all folders to calculate stats
         all_folders = await folder_service.list_folders(
@@ -658,8 +630,6 @@ async def get_folder_stats(
             depth_distribution=depth_distribution,
             max_depth=max(depth_counts.keys()) if depth_counts else 0,
         )
-
-        logger.debug("Folder statistics retrieved", org_id=org_id, stats=stats.model_dump())
 
         return stats
 

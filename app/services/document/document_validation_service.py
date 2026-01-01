@@ -198,12 +198,7 @@ class DocumentValidationService(DocumentBaseService):
                 folder_name = path_parts[2]
                 return folder_name if folder_name and folder_name != "root" else None
             return None
-        except Exception as e:
-            self.logger.debug(
-                "Error extracting folder from storage_path",
-                storage_path=storage_path,
-                error=str(e),
-            )
+        except Exception:
             return None
 
     def _ensure_safe_metadata(self, document: Document) -> Document:

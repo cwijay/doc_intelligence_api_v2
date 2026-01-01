@@ -66,16 +66,10 @@ class DatabaseManager:
     async def _async_setup_engine_for_loop(self, loop_id: int):
         """Initialize engine and session factory for the current event loop."""
         if self._shutdown:
-            logger.debug(
-                f"Skipping engine setup for loop {loop_id} - shutdown in progress"
-            )
             return
 
         # Skip if database is disabled
         if not settings.DATABASE_ENABLED:
-            logger.debug(
-                f"Skipping engine setup for loop {loop_id} - database disabled"
-            )
             return
 
         if loop_id in self._engines:
@@ -128,9 +122,6 @@ class DatabaseManager:
             connector = Connector(loop=loop)
 
             try:
-                logger.debug(
-                    f"Testing Cloud SQL connection (timeout={CLOUD_SQL_CONNECT_TIMEOUT}s)..."
-                )
                 test_conn = await asyncio.wait_for(
                     connector.connect_async(
                         settings.CLOUD_SQL_INSTANCE,
@@ -339,16 +330,16 @@ class DatabaseManager:
                     await connector.close_async()
                 else:
                     connector.close()
-            except Exception as e:
-                logger.debug(f"Error closing connector for loop {loop_id}: {e}")
+            except Exception:
+                pass
             finally:
                 del self._connectors[loop_id]
 
         if loop_id in self._engines:
             try:
                 await self._engines[loop_id].dispose()
-            except Exception as e:
-                logger.debug(f"Error disposing engine for loop {loop_id}: {e}")
+            except Exception:
+                pass
             finally:
                 del self._engines[loop_id]
 
@@ -374,8 +365,8 @@ class DatabaseManager:
         if loop_id in self._connectors and self._connectors[loop_id]:
             try:
                 self._connectors[loop_id].close()
-            except Exception as e:
-                logger.debug(f"Error closing connector: {e}")
+            except Exception:
+                pass
             del self._connectors[loop_id]
 
         # Dispose engine pool properly
@@ -388,16 +379,11 @@ class DatabaseManager:
                 pool = engine.pool
                 if pool:
                     pool.dispose()
-                    logger.debug(
-                        f"Disposed connection pool synchronously for loop {loop_id}"
-                    )
-            except Exception as e:
-                logger.debug(f"Could not dispose pool synchronously: {e}")
+            except Exception:
+                pass
 
         if loop_id in self._session_factories:
             del self._session_factories[loop_id]
-
-        logger.debug(f"Closed database resources for loop {loop_id}")
 
     def get_pool_stats(self) -> Dict[str, Any]:
         """
@@ -437,8 +423,8 @@ class DatabaseManager:
             if connector:
                 try:
                     connector.close()
-                except Exception as e:
-                    logger.debug(f"Error closing connector for loop {loop_id}: {e}")
+                except Exception:
+                    pass
         self._connectors.clear()
 
         # Dispose current loop's engine (we can only await in current loop)
@@ -446,8 +432,8 @@ class DatabaseManager:
         if current_loop_id in self._engines:
             try:
                 await self._engines[current_loop_id].dispose()
-            except Exception as e:
-                logger.debug(f"Error disposing engine: {e}")
+            except Exception:
+                pass
 
         # Clear all resources
         self._engines.clear()

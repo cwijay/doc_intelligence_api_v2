@@ -274,7 +274,6 @@ class UserService:
                     )
 
                 user = self._model_to_pydantic(user_model)
-                self.logger.debug("User retrieved", org_id=org_id, user_id=user_id)
 
                 return UserResponse.model_validate(user)
 
@@ -530,14 +529,6 @@ class UserService:
 
                 # Calculate pagination info
                 total_pages = math.ceil(total / pagination.per_page) if total > 0 else 0
-
-                self.logger.debug(
-                    "Users listed",
-                    org_id=org_id,
-                    count=len(user_responses),
-                    total=total,
-                    page=pagination.page,
-                )
 
                 return UserList(
                     users=user_responses,
@@ -885,10 +876,6 @@ class UserService:
                 user_model.last_login = datetime.now(timezone.utc)
                 user_model.updated_at = datetime.now(timezone.utc)
                 await session.flush()
-
-                self.logger.debug(
-                    "User last login updated", org_id=org_id, user_id=user_id
-                )
 
                 return True
 

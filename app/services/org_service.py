@@ -200,7 +200,6 @@ class OrganizationService:
                     )
 
                 org = self._model_to_pydantic(org_model)
-                self.logger.debug("Organization retrieved", org_id=org_id)
 
                 return OrganizationResponse.model_validate(org)
 
@@ -404,13 +403,6 @@ class OrganizationService:
 
                 # Calculate pagination info
                 total_pages = math.ceil(total / pagination.per_page) if total > 0 else 0
-
-                self.logger.debug(
-                    "Organizations listed",
-                    count=len(org_responses),
-                    total=total,
-                    page=pagination.page,
-                )
 
                 return OrganizationList(
                     items=org_responses,

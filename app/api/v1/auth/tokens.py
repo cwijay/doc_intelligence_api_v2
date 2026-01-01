@@ -62,16 +62,8 @@ async def refresh_access_token(request: RefreshTokenRequest) -> AccessTokenRespo
         HTTPException: If refresh fails
     """
     try:
-        logger.debug("Enterprise token refresh attempt")
-
         access_token, new_refresh_token, token_info = (
             await auth_service.refresh_access_token(request.refresh_token)
-        )
-
-        logger.debug(
-            "Enterprise token refresh successful",
-            rotation_enabled=token_info["rotation_enabled"],
-            refresh_token_rotated=token_info["refresh_token_rotated"],
         )
 
         return AccessTokenResponse(
@@ -132,12 +124,6 @@ async def validate_token(
         validation_info = validate_user_session(session_id)
         if not validation_info:
             raise TokenInvalidError("Session validation failed")
-
-        logger.debug(
-            "Token validation successful",
-            user_id=current_user.get("user_id"),
-            session_id=session_id[:8] + "...",
-        )
 
         return {
             "valid": validation_info["valid"],

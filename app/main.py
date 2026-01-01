@@ -252,6 +252,9 @@ async def documents_no_slash_direct(
     folder_path: Optional[str] = Query(
         None, description="Filter by folder path (target_path uploads, e.g. 'invoices')"
     ),
+    folder_name: Optional[str] = Query(
+        None, description="Filter by folder name (exact match lookup)"
+    ),
     uploaded_by: Optional[str] = Query(None, description="Filter by uploader user ID"),
     current_user: Dict[str, Any] = Depends(get_current_user_dict),
 ):
@@ -266,6 +269,7 @@ async def documents_no_slash_direct(
             status=document_status,
             folder_id=folder_id,
             folder_path=folder_path,
+            folder_name=folder_name,
             uploaded_by=uploaded_by,
         )
 

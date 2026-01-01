@@ -131,7 +131,7 @@ class DocumentQueryService(DocumentBaseService):
                         # Condition 1: Match by folder_id (legacy uploads)
                         folder_lookup = await session.execute(
                             select(FolderModel.id).where(
-                                FolderModel.org_id == org_id,
+                                FolderModel.organization_id == org_id,
                                 FolderModel.name == filters.folder_name,
                                 FolderModel.is_active == True,
                             )
@@ -237,14 +237,6 @@ class DocumentQueryService(DocumentBaseService):
 
                 # Calculate pagination info
                 total_pages = math.ceil(total / pagination.per_page) if total > 0 else 0
-
-                self.logger.debug(
-                    "Documents listed",
-                    org_id=org_id,
-                    count=len(document_responses),
-                    total=total,
-                    page=pagination.page,
-                )
 
                 return DocumentList(
                     documents=document_responses,

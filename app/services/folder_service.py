@@ -301,9 +301,6 @@ class FolderService:
                     raise FolderNotFoundError(f"Folder with ID {folder_id} not found")
 
                 folder = self._model_to_pydantic(folder_model)
-                self.logger.debug(
-                    "Folder retrieved", org_id=org_id, folder_id=folder_id
-                )
 
                 return FolderResponse.model_validate(folder)
 
@@ -373,14 +370,6 @@ class FolderService:
                 # Calculate pagination info
                 total_pages = math.ceil(total / pagination.per_page) if total > 0 else 0
 
-                self.logger.debug(
-                    "Folders listed",
-                    org_id=org_id,
-                    count=len(folder_responses),
-                    total=total,
-                    page=pagination.page,
-                )
-
                 return FolderList(
                     folders=folder_responses,
                     total=total,
@@ -419,12 +408,6 @@ class FolderService:
 
                 all_folders = [self._model_to_pydantic(m) for m in folder_models]
                 folder_tree = self._build_folder_tree(all_folders)
-
-                self.logger.debug(
-                    "Folder tree retrieved",
-                    org_id=org_id,
-                    total_folders=len(all_folders),
-                )
 
                 return FolderTree(folders=folder_tree, total_folders=len(all_folders))
 

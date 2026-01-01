@@ -187,11 +187,6 @@ class DocumentStorageService(DocumentBaseService):
         Returns:
             The original storage path (no modifications)
         """
-        self.logger.debug(
-            "Using original storage path (silent overwrite mode)",
-            org_id=org_id,
-            storage_path=storage_path,
-        )
         return storage_path
 
     async def _enrich_document_metadata(self, document: Document) -> Document:
@@ -207,13 +202,6 @@ class DocumentStorageService(DocumentBaseService):
         try:
             # Ensure file_size is valid
             if not document.file_size or document.file_size <= 0:
-                self.logger.debug(
-                    "Document has invalid file_size, attempting to fetch from GCS",
-                    document_id=document.id,
-                    current_file_size=document.file_size,
-                    storage_path=document.storage_path,
-                )
-
                 # Try to get file size from GCS
                 if gcs_client.is_initialized and document.storage_path:
                     try:
@@ -247,10 +235,6 @@ class DocumentStorageService(DocumentBaseService):
                 else:
                     # Fallback to 0 if GCS is not available
                     document.file_size = 0
-                    self.logger.debug(
-                        "GCS not initialized, using fallback file_size",
-                        document_id=document.id,
-                    )
 
             # Ensure file_type is valid
             if not document.file_type:
@@ -259,12 +243,6 @@ class DocumentStorageService(DocumentBaseService):
                     extracted_type = Document.extract_file_type(document.filename)
                     if extracted_type:
                         document.file_type = extracted_type
-                        self.logger.debug(
-                            "Set file_type from filename",
-                            document_id=document.id,
-                            filename=document.filename,
-                            file_type=document.file_type.value,
-                        )
                     else:
                         document.file_type = FileType.PDF  # Default fallback
                         self.logger.warning(
@@ -282,11 +260,6 @@ class DocumentStorageService(DocumentBaseService):
             # Ensure status is valid
             if not document.status:
                 document.status = DocumentStatus.UPLOADED  # Default status
-                self.logger.debug(
-                    "Set missing status to default",
-                    document_id=document.id,
-                    status=document.status.value,
-                )
 
             return document
 

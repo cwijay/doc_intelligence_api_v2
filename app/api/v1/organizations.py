@@ -124,8 +124,6 @@ async def get_organization(org_id: str) -> OrganizationResponse:
     - **org_id**: ID of the organization to retrieve
     """
     try:
-        logger.debug("Retrieving organization", org_id=org_id)
-
         result = await organization_service.get_organization(org_id)
 
         return result
@@ -270,20 +268,7 @@ async def list_organizations(
             name=name, domain=domain, plan_type=plan_type, is_active=is_active
         )
 
-        logger.debug(
-            "Listing organizations",
-            page=page,
-            per_page=per_page,
-            filters=filters.model_dump(exclude_none=True),
-        )
-
         result = await organization_service.list_organizations(pagination, filters)
-
-        logger.debug(
-            "Organizations listed successfully",
-            count=len(result.organizations),
-            total=result.total,
-        )
 
         return result
 
@@ -377,8 +362,6 @@ async def get_organization_by_name(name: str) -> OrganizationResponse:
     - **name**: Exact organization name to search for
     """
     try:
-        logger.debug("Retrieving organization by name", name=name)
-
         result = await organization_service.get_organization_by_name(name)
 
         if result is None:
@@ -422,7 +405,6 @@ async def get_organization_stats() -> OrganizationStatsResponse:
     Returns counts by plan type, active/inactive status, and other metrics.
     """
     try:
-        logger.debug("Retrieving organization statistics")
 
         # Get all organizations to calculate stats
         # Note: Using per_page=100 (max allowed) - for production with >100 orgs,
@@ -469,8 +451,6 @@ async def get_organization_stats() -> OrganizationStatsResponse:
             plan_distribution=plan_counts,
             premium_organizations=plan_counts["starter"] + plan_counts["pro"],
         )
-
-        logger.debug("Organization statistics retrieved", stats=stats.model_dump())
 
         return stats
 

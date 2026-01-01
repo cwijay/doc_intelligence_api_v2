@@ -145,9 +145,17 @@ class DocumentCrudService(DocumentBaseService):
                 storage_path = validation_service._validate_target_path(
                     target_path, file.filename
                 )
+                # Extract folder_name from target_path: {org_name}/original/{folder_name}/{filename}
+                path_parts = target_path.split("/")
+                if len(path_parts) >= 4 and path_parts[1] == "original":
+                    folder_name = path_parts[2]  # e.g., "invoices"
+                else:
+                    folder_name = None
             else:
-                self.logger.info(
-                    "Using legacy folder_id approach",
+                self.logger.warning(
+                    "DEPRECATED: Using fallback path construction. "
+                    "Frontend should provide target_path parameter. "
+                    "This fallback will be removed in a future version.",
                     org_id=org_id,
                     folder_id=folder_id,
                 )
@@ -181,9 +189,10 @@ class DocumentCrudService(DocumentBaseService):
 
             # Check for duplicate filename in the same folder
             # Silent overwrite: always soft-delete existing document if found
+            # Note: Use folder_name for consistency with how we store folder_id
             existing_doc = await storage_service.check_duplicate_filename(
                 org_id=org_id,
-                folder_id=folder_id,
+                folder_id=folder_name,  # Use folder name for consistency
                 original_filename=file.filename,
             )
 
@@ -221,7 +230,7 @@ class DocumentCrudService(DocumentBaseService):
                 doc_model = DocumentModel(
                     id=document_id,
                     organization_id=org_id,
-                    folder_id=folder_id,
+                    folder_id=folder_name,  # Use folder name, not UUID, for consistency with AI service
                     filename=sanitized_filename,
                     original_filename=file.filename,
                     file_type=(
@@ -385,10 +394,6 @@ class DocumentCrudService(DocumentBaseService):
                 # Safety validation
                 if validation_service:
                     document = validation_service._ensure_safe_metadata(document)
-
-                self.logger.debug(
-                    "Document retrieved", org_id=org_id, document_id=document_id
-                )
 
                 return DocumentResponse.model_validate(document)
 

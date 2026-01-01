@@ -147,8 +147,6 @@ async def get_user(
     - **user_id**: ID of the user to retrieve
     """
     try:
-        logger.debug("Retrieving user", org_id=org_id, user_id=user_id)
-
         result = await user_service.get_user(org_id, user_id)
 
         return result
@@ -338,22 +336,7 @@ async def list_users(
             is_active=is_active,
         )
 
-        logger.debug(
-            "Listing users",
-            org_id=org_id,
-            page=page,
-            per_page=per_page,
-            filters=filters.model_dump(exclude_none=True),
-        )
-
         result = await user_service.list_users(org_id, pagination, filters)
-
-        logger.debug(
-            "Users listed successfully",
-            org_id=org_id,
-            count=len(result.users),
-            total=result.total,
-        )
 
         return result
 
@@ -476,8 +459,6 @@ async def get_user_by_email(
     - **email**: User email address to search for
     """
     try:
-        logger.debug("Retrieving user by email", org_id=org_id, email=email)
-
         result = await user_service.get_user_by_email(org_id, email)
 
         if result is None:
@@ -538,8 +519,6 @@ async def get_user_by_username(
     - **username**: Username to search for
     """
     try:
-        logger.debug("Retrieving user by username", org_id=org_id, username=username)
-
         result = await user_service.get_user_by_username(org_id, username)
 
         if result is None:
@@ -605,7 +584,6 @@ async def get_user_stats(
     - **org_id**: Organization ID
     """
     try:
-        logger.debug("Retrieving user statistics", org_id=org_id)
 
         # Get all users in organization to calculate stats
         all_users = await user_service.list_users(
@@ -665,8 +643,6 @@ async def get_user_stats(
             role_distribution=role_counts,
             privileged_users=role_counts["admin"] + role_counts["user"],
         )
-
-        logger.debug("User statistics retrieved", org_id=org_id, stats=stats.model_dump())
 
         return stats
 

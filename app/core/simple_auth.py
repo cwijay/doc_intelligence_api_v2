@@ -190,13 +190,6 @@ class SimpleAuthManager:
             # Update last used time
             session.last_used = datetime.now(timezone.utc)
 
-            logger.debug(
-                "Session accessed",
-                session_id=session_id[:8] + "...",
-                user_id=session.user_id,
-                last_used=session.last_used.isoformat(),
-            )
-
             return session
 
     def invalidate_session(self, session_id: str) -> bool:
@@ -449,11 +442,6 @@ class SimpleAuthManager:
                 )
                 await db_session.execute(stmt)
 
-            logger.debug(
-                "Session persisted to database",
-                session_id=session.session_id[:8] + "...",
-                user_id=session.user_id,
-            )
         except Exception as e:
             logger.error(
                 "Failed to persist session to database",
@@ -523,10 +511,6 @@ class SimpleAuthManager:
                 )
                 await db_session.execute(stmt)
 
-            logger.debug(
-                "Session deleted from database",
-                session_id=session_id[:8] + "...",
-            )
         except Exception as e:
             logger.error(
                 "Failed to delete session from database",
@@ -720,13 +704,6 @@ def get_current_user_simple(
 
         # Update last used time
         session.last_used = datetime.now(timezone.utc)
-
-    logger.debug(
-        "User authenticated via session",
-        user_id=session.user_id,
-        org_id=session.org_id,
-        session_id=session.session_id[:8] + "...",
-    )
 
     return session
 

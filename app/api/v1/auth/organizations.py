@@ -175,17 +175,11 @@ async def lookup_organizations(
         HTTPException: If lookup fails
     """
     try:
-        logger.debug("Organization lookup", query=query)
-
         # Use the organization service to search with name filter
         filters = OrganizationFilters(name=query, is_active=True)
         pagination = PaginationParams(page=1, per_page=20)  # Limit results for lookup
 
         result = await organization_service.list_organizations(pagination, filters)
-
-        logger.debug(
-            "Organization lookup completed", query=query, count=len(result.items)
-        )
 
         return result.items
 
@@ -224,8 +218,6 @@ async def check_organization_availability(
         HTTPException: If check fails
     """
     try:
-        logger.debug("Checking organization name availability", name=name)
-
         # Check if organization exists
         existing_org = await organization_service.get_organization_by_name(name)
 
@@ -248,12 +240,6 @@ async def check_organization_availability(
                 "name": name,
                 "message": f"Organization name '{name}' is available",
             }
-
-        logger.debug(
-            "Organization availability check completed",
-            name=name,
-            available=result["available"],
-        )
 
         return result
 

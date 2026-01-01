@@ -100,15 +100,6 @@ class AuditService:
                 session.add(audit_log)
                 await session.flush()
 
-                self.logger.debug(
-                    "Audit event logged",
-                    audit_id=audit_id,
-                    org_id=org_id,
-                    action=action_value,
-                    entity_type=entity_type_value,
-                    entity_id=entity_id,
-                )
-
                 return audit_id
 
         except SQLAlchemyError as e:

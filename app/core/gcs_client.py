@@ -147,6 +147,33 @@ class GCSClient:
                 error_msg += ". Please configure GCP_PROJECT_ID, GCS_BUCKET_NAME, and authentication credentials."
             raise GCSClientError(error_msg)
 
+    def _normalize_storage_path(self, storage_path: str) -> str:
+        """
+        Normalize storage path by removing gs://bucket-name/ prefix if present.
+
+        This handles cases where the storage_path stored in the database includes
+        the full GCS URI instead of just the relative path.
+
+        Args:
+            storage_path: Path that may include gs:// prefix
+
+        Returns:
+            Relative path without bucket prefix
+        """
+        if not storage_path:
+            return storage_path
+
+        # Strip gs://bucket-name/ prefix if present
+        prefix = f"gs://{self._bucket_name}/"
+        if storage_path.startswith(prefix):
+            return storage_path[len(prefix):]
+
+        # Also handle without gs:// but with bucket name
+        if storage_path.startswith(f"{self._bucket_name}/"):
+            return storage_path[len(self._bucket_name) + 1:]
+
+        return storage_path
+
     def create_folder_structure(
         self, org_name: str, folder_path: str
     ) -> Dict[str, bool]:
@@ -178,12 +205,6 @@ class GCSClient:
                     blob.upload_from_string("", content_type="text/plain")
 
                     results[folder_type] = True
-                    self.logger.debug(
-                        "Created GCS original folder with .keep file",
-                        org_name=org_name,
-                        folder_type=folder_type,
-                        path=gcs_path,
-                    )
                 else:
                     # Create a placeholder object for parsed and bm-25 folders
                     blob_name = f"{gcs_path}.folder_placeholder"
@@ -193,12 +214,6 @@ class GCSClient:
                     blob.upload_from_string("", content_type="text/plain")
 
                     results[folder_type] = True
-                    self.logger.debug(
-                        "Created GCS folder",
-                        org_name=org_name,
-                        folder_type=folder_type,
-                        path=gcs_path,
-                    )
 
             return results
 
@@ -420,7 +435,8 @@ class GCSClient:
         """
         self._ensure_initialized()
         try:
-            blob = self.bucket.blob(storage_path)
+            normalized_path = self._normalize_storage_path(storage_path)
+            blob = self.bucket.blob(normalized_path)
 
             if not blob.exists():
                 raise GCSObjectNotFoundError(f"Document file not found: {storage_path}")
@@ -455,7 +471,8 @@ class GCSClient:
         """
         self._ensure_initialized()
         try:
-            blob = self.bucket.blob(storage_path)
+            normalized_path = self._normalize_storage_path(storage_path)
+            blob = self.bucket.blob(normalized_path)
 
             if not blob.exists():
                 self.logger.warning(
@@ -502,7 +519,8 @@ class GCSClient:
             from google.auth.transport import requests as auth_requests
             from google.oauth2 import service_account
 
-            blob = self.bucket.blob(storage_path)
+            normalized_path = self._normalize_storage_path(storage_path)
+            blob = self.bucket.blob(normalized_path)
 
             if not blob.exists():
                 raise GCSObjectNotFoundError(f"Document file not found: {storage_path}")
@@ -524,10 +542,6 @@ class GCSClient:
             else:
                 # OAuth/ADC credentials - use IAM signBlob API
                 # This requires the credentials to have iam.serviceAccounts.signBlob permission
-                self.logger.debug(
-                    "Using IAM signBlob API for signed URL generation",
-                    credential_type=type(credentials).__name__,
-                )
 
                 # Refresh credentials to get access token
                 auth_request = auth_requests.Request()
@@ -620,7 +634,8 @@ class GCSClient:
         """
         self._ensure_initialized()
         try:
-            blob = self.bucket.blob(storage_path)
+            normalized_path = self._normalize_storage_path(storage_path)
+            blob = self.bucket.blob(normalized_path)
 
             if not blob.exists():
                 raise GCSObjectNotFoundError(f"Document file not found: {storage_path}")
@@ -639,12 +654,6 @@ class GCSClient:
                 "storage_class": blob.storage_class,
                 "custom_metadata": blob.metadata or {},
             }
-
-            self.logger.debug(
-                "Retrieved document metadata from GCS",
-                storage_path=storage_path,
-                size=metadata["size"],
-            )
 
             return metadata
 
@@ -712,13 +721,6 @@ class GCSClient:
                     "updated": blob.updated.isoformat() if blob.updated else None,
                 }
                 documents.append(document_info)
-
-            self.logger.debug(
-                "Listed documents in folder",
-                org_name=org_name,
-                folder_name=folder_name,
-                count=len(documents),
-            )
 
             return documents
 
@@ -896,12 +898,6 @@ class GCSClient:
                             "md5_hash": blob.md5_hash,
                         }
                         files.append(file_metadata)
-
-            self.logger.debug(
-                "Listed files in GCS path",
-                folder_path=folder_path,
-                file_count=len(files),
-            )
 
             return files
 

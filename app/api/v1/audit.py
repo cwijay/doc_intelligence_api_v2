@@ -138,14 +138,6 @@ async def list_audit_logs(
             restrict_to_user=restrict_to_user,
         )
 
-        logger.debug(
-            "Audit logs retrieved",
-            org_id=current_user["org_id"],
-            user_id=current_user["user_id"],
-            is_admin=is_admin,
-            total=result["total"],
-        )
-
         return result
 
     except HTTPException:
@@ -226,13 +218,6 @@ async def get_my_activity(
             action=action_enum,
             start_date=start_date,
             end_date=end_date,
-        )
-
-        logger.debug(
-            "User activity retrieved",
-            org_id=current_user["org_id"],
-            user_id=current_user["user_id"],
-            total=result["total"],
         )
 
         return result
@@ -319,14 +304,6 @@ async def get_entity_history(
             entity_type=entity_type_enum,
             entity_id=entity_id,
             limit=limit,
-        )
-
-        logger.debug(
-            "Entity history retrieved",
-            org_id=current_user["org_id"],
-            entity_type=entity_type,
-            entity_id=entity_id,
-            count=len(result),
         )
 
         return result

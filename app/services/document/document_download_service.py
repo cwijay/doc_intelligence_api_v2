@@ -347,15 +347,6 @@ class DocumentDownloadService(DocumentBaseService):
             # - Document sharing permissions
             # - Time-based access restrictions
 
-            self.logger.debug(
-                "Download access validated",
-                org_id=org_id,
-                document_id=document_id,
-                filename=document.filename,
-                user_id=user_id,
-                access_granted=True,
-            )
-
             return {
                 "access_granted": True,
                 "document_id": document_id,

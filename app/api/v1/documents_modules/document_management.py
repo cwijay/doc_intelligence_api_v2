@@ -221,23 +221,20 @@ async def list_documents(
             uploaded_by=uploaded_by,
         )
 
-        logger.debug(
-            "Listing documents",
+        # DEBUG: Trace query parameter values at router level
+        logger.info(
+            "Router received query params",
             org_id=org_id,
-            page=page,
-            per_page=per_page,
-            filters=filters.model_dump(exclude_none=True),
+            folder_name_param=folder_name,
+            folder_id_param=folder_id,
+            folder_path_param=folder_path,
+            filters_folder_name=filters.folder_name,
+            filters_folder_id=filters.folder_id,
+            filters_folder_path=filters.folder_path,
         )
 
         result = await document_service.list_documents(
             org_id=org_id, pagination=pagination, filters=filters
-        )
-
-        logger.debug(
-            "Documents listed successfully",
-            org_id=org_id,
-            count=len(result.documents),
-            total=result.total,
         )
 
         return result
@@ -322,17 +319,8 @@ async def get_document(
     org_id = user_context["org_id"]
 
     try:
-        logger.debug("Getting document", org_id=org_id, document_id=document_id)
-
         result = await document_service.get_document(
             org_id=org_id, document_id=document_id
-        )
-
-        logger.debug(
-            "Document retrieved successfully",
-            org_id=org_id,
-            document_id=document_id,
-            filename=result.filename,
         )
 
         return result

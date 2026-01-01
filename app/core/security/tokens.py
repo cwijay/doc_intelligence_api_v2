@@ -91,7 +91,7 @@ class EnterpriseTokenManager:
                 self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
             except RuntimeError:
                 # No event loop in current thread
-                logger.debug("Cleanup task will start when event loop is ready")
+                pass
 
     async def _periodic_cleanup(self):
         """Periodic cleanup of expired tokens and blacklist entries."""
@@ -134,12 +134,6 @@ class EnterpriseTokenManager:
                         token_info.refresh_token_family_id
                     ].add(token_info.token_id)
 
-                logger.debug(
-                    "Token registered successfully",
-                    token_id=token_info.token_id[:8] + "...",
-                    user_id=token_info.user_id,
-                    token_type=token_info.token_type,
-                )
                 return True
 
             except Exception as e:
@@ -360,14 +354,6 @@ def create_access_token(
     # Register token in enterprise manager
     _enterprise_token_manager.register_token(token_info)
 
-    logger.debug(
-        "Access token created",
-        token_id=token_id[:8] + "...",
-        user_id=data.get("sub"),
-        org_id=data.get("org_id"),
-        expires_in_minutes=settings.access_token_expire_minutes,
-    )
-
     return encoded_jwt, token_info
 
 
@@ -430,15 +416,6 @@ def create_refresh_token(
     # Register token in enterprise manager
     _enterprise_token_manager.register_token(token_info)
 
-    logger.debug(
-        "Refresh token created",
-        token_id=token_id[:8] + "...",
-        family_id=family_id[:8] + "...",
-        user_id=user_id,
-        org_id=org_id,
-        expires_in_days=settings.refresh_token_expire_days,
-    )
-
     return encoded_jwt, token_info
 
 
@@ -467,20 +444,9 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
                         datetime.now(timezone.utc)
                     )
 
-        if settings.ENABLE_AUTH_AUDIT_LOGGING:
-            logger.debug(
-                "Token verified successfully",
-                token_id=token_id[:8] + "..." if token_id else "legacy",
-                user_id=payload.get("sub"),
-                org_id=payload.get("org_id"),
-                token_type=payload.get("token_type", payload.get("type")),
-            )
-
         return payload
 
     except jwt.ExpiredSignatureError:
-        if settings.ENABLE_AUTH_AUDIT_LOGGING:
-            logger.debug("Token verification failed: expired signature")
         return None
     except jwt.InvalidSignatureError:
         logger.warning(
@@ -514,14 +480,8 @@ def verify_token_detailed(
         payload = jwt.decode(
             token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
         )
-        logger.debug(
-            "Token verified successfully",
-            user_id=payload.get("sub"),
-            org_id=payload.get("org_id"),
-        )
         return payload, TokenValidationResult.VALID
     except jwt.ExpiredSignatureError:
-        logger.debug("Token verification failed: expired signature")
         return None, TokenValidationResult.EXPIRED
     except jwt.InvalidSignatureError:
         logger.warning("Token verification failed: invalid signature")
@@ -686,16 +646,9 @@ def verify_invitation_token(token: str) -> Optional[Dict[str, Any]]:
             token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
         )
         if payload.get("type") != "invitation":
-            logger.debug("Token verification failed: not an invitation token")
             return None
-        logger.debug(
-            "Invitation token verified successfully",
-            email=payload.get("email"),
-            org_id=payload.get("org_id"),
-        )
         return payload
     except jwt.ExpiredSignatureError:
-        logger.debug("Invitation token verification failed: expired signature")
         return None
     except jwt.InvalidSignatureError:
         logger.warning("Invitation token verification failed: invalid signature")

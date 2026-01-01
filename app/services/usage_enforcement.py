@@ -56,7 +56,6 @@ async def check_storage_before_upload(org_id: str, file_size: int) -> Optional[d
         HTTPException: 402 if storage limit would be exceeded
     """
     if not USAGE_TRACKING_ENABLED or not usage_service:
-        logger.debug("Usage tracking disabled, skipping storage check")
         return None
 
     try:
@@ -133,10 +132,6 @@ async def update_storage_after_upload(org_id: str, file_size: int) -> Optional[i
 
     try:
         new_usage = await usage_service.update_storage_used(org_id, file_size)
-        logger.debug(
-            f"Updated storage for org {org_id}: +{file_size} bytes, "
-            f"new total: {new_usage} bytes"
-        )
         return new_usage
     except Exception as e:
         logger.error(f"Error updating storage after upload: {e}")
@@ -162,10 +157,6 @@ async def update_storage_after_delete(org_id: str, file_size: int) -> Optional[i
 
     try:
         new_usage = await usage_service.update_storage_used(org_id, -file_size)
-        logger.debug(
-            f"Updated storage for org {org_id}: -{file_size} bytes, "
-            f"new total: {new_usage} bytes"
-        )
         return new_usage
     except Exception as e:
         logger.error(f"Error updating storage after delete: {e}")

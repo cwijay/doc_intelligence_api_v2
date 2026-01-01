@@ -158,8 +158,6 @@ async def close_cache() -> None:
             logger.info("Cache connections closed", backend=_active_backend)
         except Exception as e:
             logger.error("Error closing cache connections", error=str(e))
-    else:
-        logger.debug("Cache shutdown complete", backend=_active_backend)
 
     _cache_initialized = False
     _active_backend = "none"
@@ -359,20 +357,8 @@ async def invalidate_documents(org_id: str) -> None:
                 keys = await backend._redis.keys(f"docint:documents:{org_id}:*")
                 if keys:
                     await backend._redis.delete(*keys)
-                    logger.debug(
-                        "Document cache invalidated",
-                        org_id=org_id,
-                        keys_deleted=len(keys),
-                    )
         except Exception as e:
             logger.warning("Failed to invalidate document cache", error=str(e))
-    else:
-        # In-memory backend doesn't support pattern deletion
-        # Rely on TTL expiration
-        logger.debug(
-            "Document cache invalidation requested (TTL-based)",
-            org_id=org_id,
-        )
 
 
 async def invalidate_folders(org_id: str) -> None:
@@ -389,15 +375,8 @@ async def invalidate_folders(org_id: str) -> None:
                 keys = await backend._redis.keys(f"docint:folders:{org_id}:*")
                 if keys:
                     await backend._redis.delete(*keys)
-                    logger.debug(
-                        "Folder cache invalidated",
-                        org_id=org_id,
-                        keys_deleted=len(keys),
-                    )
         except Exception as e:
             logger.warning("Failed to invalidate folder cache", error=str(e))
-    else:
-        logger.debug("Folder cache invalidation requested (TTL-based)", org_id=org_id)
 
 
 async def invalidate_users(org_id: str) -> None:
@@ -414,15 +393,8 @@ async def invalidate_users(org_id: str) -> None:
                 keys = await backend._redis.keys(f"docint:users:{org_id}:*")
                 if keys:
                     await backend._redis.delete(*keys)
-                    logger.debug(
-                        "User cache invalidated",
-                        org_id=org_id,
-                        keys_deleted=len(keys),
-                    )
         except Exception as e:
             logger.warning("Failed to invalidate user cache", error=str(e))
-    else:
-        logger.debug("User cache invalidation requested (TTL-based)", org_id=org_id)
 
 
 async def invalidate_organization(org_id: str) -> None:
@@ -439,14 +411,5 @@ async def invalidate_organization(org_id: str) -> None:
                 keys = await backend._redis.keys(f"docint:organizations:{org_id}:*")
                 if keys:
                     await backend._redis.delete(*keys)
-                    logger.debug(
-                        "Organization cache invalidated",
-                        org_id=org_id,
-                        keys_deleted=len(keys),
-                    )
         except Exception as e:
             logger.warning("Failed to invalidate organization cache", error=str(e))
-    else:
-        logger.debug(
-            "Organization cache invalidation requested (TTL-based)", org_id=org_id
-        )
