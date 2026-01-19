@@ -281,7 +281,7 @@ class FolderService:
         Raises:
             FolderNotFoundError: If folder not found
         """
-        result = await self._get_folder_cached(org_id, folder_id)
+        result = await self._get_folder_cached(org_id=org_id, folder_id=folder_id)
         return self._ensure_response_model(result)
 
     @cached_folders()

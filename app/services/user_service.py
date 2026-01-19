@@ -246,7 +246,7 @@ class UserService:
             OrganizationNotFoundError: If organization doesn't exist
             UserNotFoundError: If user not found
         """
-        result = await self._get_user_cached(org_id, user_id)
+        result = await self._get_user_cached(org_id=org_id, user_id=user_id)
         return self._ensure_response_model(result)
 
     @cached_users()

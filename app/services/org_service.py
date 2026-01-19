@@ -180,7 +180,7 @@ class OrganizationService:
         Raises:
             OrganizationNotFoundError: If organization not found
         """
-        result = await self._get_organization_cached(org_id)
+        result = await self._get_organization_cached(org_id=org_id)
         return self._ensure_response_model(result)
 
     @cached_organizations()
